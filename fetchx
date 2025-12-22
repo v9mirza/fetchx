@@ -2,6 +2,7 @@
 
 import os
 import platform
+import shutil
 
 # ================= ASCII LOGO =================
 
@@ -16,7 +17,7 @@ ASCII_LOGO = r"""
 
 # ================= HELPERS =================
 
-def distro():
+def os_name():
     try:
         with open("/etc/os-release") as f:
             for line in f:
@@ -24,35 +25,62 @@ def distro():
                     return line.split("=", 1)[1].strip().strip('"')
     except:
         pass
-    return "unknown"
+    return platform.system()
 
 def uptime():
-    with open("/proc/uptime") as f:
-        seconds = float(f.readline().split()[0])
-    h = int(seconds // 3600)
-    m = int((seconds % 3600) // 60)
-    return f"{h}h {m}m"
+    try:
+        with open("/proc/uptime") as f:
+            seconds = float(f.readline().split()[0])
+        h = int(seconds // 3600)
+        m = int((seconds % 3600) // 60)
+        return f"{h}h {m}m"
+    except:
+        return "unknown"
 
 def memory():
-    mem = {}
-    with open("/proc/meminfo") as f:
-        for line in f:
-            k, v = line.split(":")
-            mem[k] = int(v.strip().split()[0])
-    total = mem["MemTotal"] // 1024
-    avail = mem["MemAvailable"] // 1024
-    used = total - avail
-    return f"{used}MB / {total}MB"
+    try:
+        mem = {}
+        with open("/proc/meminfo") as f:
+            for line in f:
+                k, v = line.split(":")
+                mem[k] = int(v.strip().split()[0])
+        total = mem["MemTotal"] // 1024
+        avail = mem["MemAvailable"] // 1024
+        used = total - avail
+        return f"{used}MB / {total}MB"
+    except:
+        return "unknown"
 
 def cpu():
-    with open("/proc/cpuinfo") as f:
-        for line in f:
-            if "model name" in line:
-                return line.split(":", 1)[1].strip()
+    try:
+        with open("/proc/cpuinfo") as f:
+            for line in f:
+                if "model name" in line:
+                    return line.split(":", 1)[1].strip()
+    except:
+        pass
     return "unknown"
 
-def arch():
-    return platform.machine()
+def gpus():
+    try:
+        out = os.popen("lspci | grep -Ei 'vga|3d|display'").read().strip()
+        if not out:
+            return []
+        return [line.split(": ", 1)[1] for line in out.splitlines()]
+    except:
+        return []
+
+def packages():
+    try:
+        if shutil.which("pacman"):
+            return os.popen("pacman -Qq | wc -l").read().strip()
+        if shutil.which("dpkg"):
+            return os.popen("dpkg -l | grep '^ii' | wc -l").read().strip()
+        if shutil.which("rpm"):
+            return os.popen("rpm -qa | wc -l").read().strip()
+    except:
+        pass
+    return None
 
 def desktop():
     return (
@@ -67,6 +95,9 @@ def terminal():
 def user():
     return os.environ.get("USER", "unknown")
 
+def row(label, value, cyan, reset):
+    return f"{cyan}{label:<10}{reset} {value}"
+
 # ================= MAIN =================
 
 def main():
@@ -75,20 +106,27 @@ def main():
 
     print(f"{cyan}{ASCII_LOGO}{reset}")
 
-    print(f"""
-{cyan}OS:{reset}        {platform.system()}
-{cyan}Distro:{reset}    {distro()}
-{cyan}Kernel:{reset}    {platform.release()}
-{cyan}Arch:{reset}      {arch()}
-{cyan}Host:{reset}      {platform.node()}
-{cyan}Desktop:{reset}   {desktop()}
-{cyan}CPU:{reset}       {cpu()}
-{cyan}Memory:{reset}    {memory()}
-{cyan}Uptime:{reset}    {uptime()}
-{cyan}Shell:{reset}     {os.environ.get("SHELL", "unknown")}
-{cyan}Terminal:{reset}  {terminal()}
-{cyan}User:{reset}      {user()}
-""")
+    print(row("OS:", os_name(), cyan, reset))
+    print(row("Kernel:", platform.release(), cyan, reset))
+    print(row("Arch:", platform.machine(), cyan, reset))
+    print(row("Host:", platform.node(), cyan, reset))
+    print(row("Desktop:", desktop(), cyan, reset))
+    print(row("CPU:", cpu(), cyan, reset))
+
+    for i, gpu in enumerate(gpus(), 1):
+        label = "GPU:" if i == 1 else f"GPU {i}:"
+        print(row(label, gpu, cyan, reset))
+
+    print(row("Memory:", memory(), cyan, reset))
+
+    pkgs = packages()
+    if pkgs:
+        print(row("Packages:", pkgs, cyan, reset))
+
+    print(row("Uptime:", uptime(), cyan, reset))
+    print(row("Shell:", os.environ.get("SHELL", "unknown"), cyan, reset))
+    print(row("Terminal:", terminal(), cyan, reset))
+    print(row("User:", user(), cyan, reset))
 
 if __name__ == "__main__":
     main()
