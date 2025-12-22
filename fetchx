@@ -283,7 +283,10 @@ def show_full():
 # ================= MAIN =================
 
 def main():
-    print(ASCII_LOGO)
+    CYAN = "\033[36m"
+    RESET = "\033[0m"
+    print(f"{CYAN}{ASCII_LOGO}{RESET}")
+
 
     if NETWORK:
         show_network()
