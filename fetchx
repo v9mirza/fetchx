@@ -1,8 +1,20 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 import platform
 import shutil
+import socket
+
+# ================= FLAGS =================
+
+ARGS = sys.argv[1:]
+FULL = "--full" in ARGS
+NETWORK = "--network" in ARGS
+HELP = "--help" in ARGS or "-h" in ARGS
+VERSION_FLAG = "--version" in ARGS
+
+VERSION = "0.1.0"
 
 # ================= ASCII LOGO =================
 
@@ -14,6 +26,25 @@ ASCII_LOGO = r"""
    ██║     ███████╗   ██║   ╚██████╗██║  ██║██╔╝ ██╗
    ╚═╝     ╚══════╝   ╚═╝    ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝
 """
+
+# ================= HELP / VERSION =================
+
+if HELP:
+    print(
+        "fetchx — system snapshot tool\n\n"
+        "Usage:\n"
+        "  fetchx\n"
+        "  fetchx --full\n"
+        "  fetchx --network\n"
+        "  fetchx --full --network\n"
+        "  fetchx --help\n"
+        "  fetchx --version"
+    )
+    sys.exit(0)
+
+if VERSION_FLAG:
+    print(f"fetchx {VERSION}")
+    sys.exit(0)
 
 # ================= HELPERS =================
 
@@ -61,12 +92,43 @@ def cpu():
         pass
     return "unknown"
 
+def cpu_cores():
+    try:
+        cores = set()
+        threads = 0
+        with open("/proc/cpuinfo") as f:
+            for line in f:
+                if line.startswith("core id"):
+                    cores.add(line.strip())
+                if line.startswith("processor"):
+                    threads += 1
+        return f"{len(cores)} cores / {threads} threads"
+    except:
+        return None
+
 def gpus():
     try:
         out = os.popen("lspci | grep -Ei 'vga|3d|display'").read().strip()
         if not out:
             return []
         return [line.split(": ", 1)[1] for line in out.splitlines()]
+    except:
+        return []
+
+def gpus_full():
+    try:
+        out = os.popen("lspci -k | grep -EA3 'vga|3d|display'").read().strip()
+        blocks = out.split("\n\n")
+        gpus = []
+        for b in blocks:
+            lines = b.splitlines()
+            name = lines[0].split(": ", 1)[1]
+            driver = "unknown"
+            for l in lines:
+                if "Kernel driver in use" in l:
+                    driver = l.split(": ", 1)[1]
+            gpus.append(f"{name} ({driver})")
+        return gpus
     except:
         return []
 
@@ -92,11 +154,87 @@ def desktop():
 def terminal():
     return os.environ.get("TERM_PROGRAM") or os.environ.get("TERM") or "unknown"
 
-def user():
-    return os.environ.get("USER", "unknown")
+def init_system():
+    try:
+        with open("/proc/1/comm") as f:
+            return f.read().strip()
+    except:
+        return None
+
+def session_type():
+    if os.environ.get("WAYLAND_DISPLAY"):
+        return "Wayland"
+    if os.environ.get("DISPLAY"):
+        return "X11"
+    return None
+
+def wsl():
+    try:
+        with open("/proc/version") as f:
+            v = f.read().lower()
+            if "microsoft" in v or "wsl" in v:
+                return "WSL"
+    except:
+        pass
+    return None
+
+# ---------- Network helpers ----------
+
+def interface():
+    try:
+        return os.popen("ip route | awk '/default/ {print $5}'").read().strip()
+    except:
+        return None
+
+def local_ip():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except:
+        return None
+
+def gateway():
+    try:
+        return os.popen("ip route | awk '/default/ {print $3}'").read().strip()
+    except:
+        return None
+
+def mac_address(iface):
+    try:
+        with open(f"/sys/class/net/{iface}/address") as f:
+            return f.read().strip()
+    except:
+        return None
+
+def link_state(iface):
+    try:
+        with open(f"/sys/class/net/{iface}/operstate") as f:
+            return f.read().strip()
+    except:
+        return None
+
+def dns_servers():
+    try:
+        servers = []
+        with open("/etc/resolv.conf") as f:
+            for line in f:
+                if line.startswith("nameserver"):
+                    servers.append(line.split()[1])
+        return ", ".join(servers) if servers else None
+    except:
+        return None
+
+def external_ip():
+    try:
+        return os.popen("curl -fsSL https://api.ipify.org").read().strip()
+    except:
+        return None
 
 def row(label, value, cyan, reset):
-    return f"{cyan}{label:<10}{reset} {value}"
+    return f"{cyan}{label:<12}{reset} {value}"
 
 # ================= MAIN =================
 
@@ -106,10 +244,15 @@ def main():
 
     print(f"{cyan}{ASCII_LOGO}{reset}")
 
+    # ----- DEFAULT OUTPUT -----
     print(row("OS:", os_name(), cyan, reset))
     print(row("Kernel:", platform.release(), cyan, reset))
-    print(row("Arch:", platform.machine(), cyan, reset))
     print(row("Host:", platform.node(), cyan, reset))
+
+    pkgs = packages()
+    if pkgs:
+        print(row("Packages:", pkgs, cyan, reset))
+
     print(row("Desktop:", desktop(), cyan, reset))
     print(row("CPU:", cpu(), cyan, reset))
 
@@ -118,15 +261,61 @@ def main():
         print(row(label, gpu, cyan, reset))
 
     print(row("Memory:", memory(), cyan, reset))
-
-    pkgs = packages()
-    if pkgs:
-        print(row("Packages:", pkgs, cyan, reset))
-
     print(row("Uptime:", uptime(), cyan, reset))
     print(row("Shell:", os.environ.get("SHELL", "unknown"), cyan, reset))
     print(row("Terminal:", terminal(), cyan, reset))
-    print(row("User:", user(), cyan, reset))
+    print(row("User:", os.environ.get("USER", "unknown"), cyan, reset))
+
+    # ----- FULL OUTPUT (superset) -----
+    if FULL:
+        print()
+        print(row("Arch:", platform.machine(), cyan, reset))
+
+        if init_system():
+            print(row("Init:", init_system(), cyan, reset))
+        if cpu_cores():
+            print(row("CPU Cores:", cpu_cores(), cyan, reset))
+        if session_type():
+            print(row("Session:", session_type(), cyan, reset))
+        if wsl():
+            print(row("Environment:", wsl(), cyan, reset))
+
+        for i, gpu in enumerate(gpus_full(), 1):
+            label = "GPU Driver:" if i == 1 else f"GPU {i} Driver:"
+            print(row(label, gpu, cyan, reset))
+
+    # ----- NETWORK OUTPUT -----
+    if NETWORK:
+        print()
+        print(row("Network:", "", cyan, reset))
+
+        iface = interface()
+        if iface:
+            print(row("Interface:", iface, cyan, reset))
+
+            mac = mac_address(iface)
+            if mac:
+                print(row("MAC:", mac, cyan, reset))
+
+            state = link_state(iface)
+            if state:
+                print(row("Link:", state, cyan, reset))
+
+        ip = local_ip()
+        if ip:
+            print(row("Local IP:", ip, cyan, reset))
+
+        gw = gateway()
+        if gw:
+            print(row("Gateway:", gw, cyan, reset))
+
+        dns = dns_servers()
+        if dns:
+            print(row("DNS:", dns, cyan, reset))
+
+        ext = external_ip()
+        if ext:
+            print(row("External IP:", ext, cyan, reset))
 
 if __name__ == "__main__":
     main()
