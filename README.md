@@ -1,9 +1,17 @@
+
 # 🚀 fetchx
 
 **A minimal, dependency-free system information tool for Linux.**
 
-`fetchx` provides essential system details in a clean, high-contrast layout.  
-It is designed to be fast, readable, and out of your way.
+---
+
+## 📖 What is fetchx?
+
+**fetchx** is a fast, no-nonsense system information fetcher for people who value clarity over clutter.
+
+Most fetch tools started simple—and then accumulated themes, config files, plugins, and startup lag. `fetchx` deliberately moves in the opposite direction. 
+
+It shows a clean, high-contrast snapshot of your system the moment your terminal opens, then gets out of the way. Written in **pure Python**, using **only the standard library**. If Python exists on your system, `fetchx` runs—no `pip`, no dependencies, no setup ceremony.
 
 ---
 
@@ -17,98 +25,90 @@ It is designed to be fast, readable, and out of your way.
 ██║     ███████╗   ██║   ╚██████╗██║  ██║██╔╝ ██╗
 ╚═╝     ╚══════╝   ╚═╝    ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝
 
-OS:        Linux
-Distro:    Ubuntu 24.04 LTS
+OS:        Ubuntu 24.04.3 LTS
 Kernel:    6.6.x
-Arch:      x86_64
-CPU:       Ryzen 5 6600H
-Memory:    3.2GB / 7.5GB
-Uptime:    13h 20m
-Shell:     zsh
-````
+Host:      acer
+Packages:  693
+Desktop:   tty
+CPU:       AMD Ryzen 5 6600H
+GPU:       Microsoft Basic Render Driver
+Memory:    2.3GB / 7.5GB
+Uptime:    16h 50m
+Shell:     /bin/bash
+Terminal:  xterm-256color
+User:      mirza
+
+```
 
 ---
 
-## 💡 The fetchx Philosophy
+## 🛠️ Usage & Commands
 
-Unlike other “fetch” tools that have grown into complex frameworks, `fetchx`
-follows the Unix philosophy of doing one thing well:
+| Command | Description |
+| --- | --- |
+| `fetchx` | **Default**: Displays essential system snapshot. |
+| `fetchx --full` | **Full Mode**: Extended details (Arch, Init, etc.). |
+| `fetchx --network` | **Network Mode**: IP, MAC, Gateway, and DNS details. |
+| `fetchx --help` | **Help**: Displays all available flags and usage. |
+| `fetchx --version` | **Version**: Shows current installed version. |
 
-* **Zero Configuration** — No `.conf` files, no themes, no hidden folders.
-* **Zero Dependencies** — Uses only the Python standard library (Python 3 required).
-* **Zero Lag** — Optimized for execution in milliseconds.
-* **WSL Friendly** — Correctly detects Windows Subsystem for Linux environments.
+---
+
+## 💡 Design Philosophy
+
+* **Zero configuration** — No dotfiles, no hidden state.
+* **Zero dependencies** — Python 3 standard library only.
+* **Zero lag** — Optimized for instant execution.
+* **WSL-aware** — Detects and adapts to Windows Subsystem for Linux.
 
 ---
 
 ## 📥 Installation
 
-### Requirements
-
-* Linux (or WSL)
-* Python 3.8+
-
-### Quick Install
-
-Install system-wide with a single command:
+### Quick Install (Recommended)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/v9mirza/fetchx/main/install.sh | bash
-```
+curl -fsSL [https://raw.githubusercontent.com/v9mirza/fetchx/main/install.sh](https://raw.githubusercontent.com/v9mirza/fetchx/main/install.sh) | bash
 
----
+```
 
 ### Manual Setup
 
-If you prefer a manual installation to your local path:
-
 ```bash
-git clone https://github.com/v9mirza/fetchx.git
+git clone [https://github.com/v9mirza/fetchx.git](https://github.com/v9mirza/fetchx.git)
 cd fetchx
 chmod +x fetchx
 mkdir -p ~/.local/bin
 cp fetchx ~/.local/bin/
+
 ```
 
-Make sure `~/.local/bin` is in your `PATH`.
+*Note: Ensure `~/.local/bin` is in your `$PATH`.*
 
 ---
 
-## 🛠 Usage
+## ⚙️ Optional: Auto-run on Terminal Launch
 
-Run:
-
-```bash
-fetchx
-```
-
-### Optional: Run on Terminal Startup (Safe)
-
-If you want `fetchx` to run when you open a terminal, add this **at the end**
-of your shell config file:
+To have `fetchx` greet you every time you open a terminal, add this to your `~/.bashrc` or `~/.zshrc`:
 
 ```bash
-# ~/.bashrc or ~/.zshrc
 if [[ $SHLVL -eq 1 ]] && command -v fetchx >/dev/null; then
   fetchx
 fi
-```
 
-This avoids startup warnings and runs only once per terminal session.
+```
 
 ---
 
-## 🗺 Roadmap
+## 🗺️ Roadmap
 
-* [ ] Side-by-side layout for wide terminals
-* [ ] Machine-readable output (`--json`)
-* [ ] Native packages (`.deb`, AUR)
+* [ ] Side-by-side layout for ultra-wide terminals.
+* [ ] JSON Output (`--json`) for scripting and dashboards.
+* [ ] Native Packages via `.deb` and AUR.
 
 ---
 
-## 📄 License
-
-Distributed under the MIT License.
-See the `LICENSE` file for details.
+**Released under the MIT License.**
 
 ```
+
