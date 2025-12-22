@@ -21,7 +21,7 @@ def distro():
         with open("/etc/os-release") as f:
             for line in f:
                 if line.startswith("PRETTY_NAME"):
-                    return line.split("=")[1].strip().strip('"')
+                    return line.split("=", 1)[1].strip().strip('"')
     except:
         pass
     return "unknown"
@@ -29,27 +29,26 @@ def distro():
 def uptime():
     with open("/proc/uptime") as f:
         seconds = float(f.readline().split()[0])
-    hours = int(seconds // 3600)
-    minutes = int((seconds % 3600) // 60)
-    return f"{hours}h {minutes}m"
+    h = int(seconds // 3600)
+    m = int((seconds % 3600) // 60)
+    return f"{h}h {m}m"
 
 def memory():
-    meminfo = {}
+    mem = {}
     with open("/proc/meminfo") as f:
         for line in f:
-            key, val = line.split(":")
-            meminfo[key] = int(val.strip().split()[0])
-
-    total = meminfo["MemTotal"] // 1024
-    available = meminfo["MemAvailable"] // 1024
-    used = total - available
+            k, v = line.split(":")
+            mem[k] = int(v.strip().split()[0])
+    total = mem["MemTotal"] // 1024
+    avail = mem["MemAvailable"] // 1024
+    used = total - avail
     return f"{used}MB / {total}MB"
 
 def cpu():
     with open("/proc/cpuinfo") as f:
         for line in f:
             if "model name" in line:
-                return line.split(":")[1].strip()
+                return line.split(":", 1)[1].strip()
     return "unknown"
 
 def arch():
@@ -63,11 +62,7 @@ def desktop():
     )
 
 def terminal():
-    return (
-        os.environ.get("TERM_PROGRAM")
-        or os.environ.get("TERM")
-        or "unknown"
-    )
+    return os.environ.get("TERM_PROGRAM") or os.environ.get("TERM") or "unknown"
 
 def user():
     return os.environ.get("USER", "unknown")
@@ -75,27 +70,22 @@ def user():
 # ================= MAIN =================
 
 def main():
-    os_name = platform.system()
-    kernel = platform.release()
-    host = platform.node()
-    shell = os.environ.get("SHELL", "unknown")
-
     cyan = "\033[36m"
     reset = "\033[0m"
 
     print(f"{cyan}{ASCII_LOGO}{reset}")
 
     print(f"""
-{cyan}OS:{reset}        {os_name}
+{cyan}OS:{reset}        {platform.system()}
 {cyan}Distro:{reset}    {distro()}
-{cyan}Kernel:{reset}    {kernel}
+{cyan}Kernel:{reset}    {platform.release()}
 {cyan}Arch:{reset}      {arch()}
-{cyan}Host:{reset}      {host}
+{cyan}Host:{reset}      {platform.node()}
 {cyan}Desktop:{reset}   {desktop()}
 {cyan}CPU:{reset}       {cpu()}
 {cyan}Memory:{reset}    {memory()}
 {cyan}Uptime:{reset}    {uptime()}
-{cyan}Shell:{reset}     {shell}
+{cyan}Shell:{reset}     {os.environ.get("SHELL", "unknown")}
 {cyan}Terminal:{reset}  {terminal()}
 {cyan}User:{reset}      {user()}
 """)

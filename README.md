@@ -1,134 +1,103 @@
-# fetchx
-Fetchx
+---
 
-Fetchx is a fast, minimal system information tool for Linux.
-It displays essential system details in a clean, neofetch-style layout — nothing more, nothing less.
+# 🚀 fetchx
 
-Built to be readable, hackable, and honest.
+**A minimal, dependency-free system information tool for Linux.**
 
-Why Fetchx?
+`fetchx` provides essential system details in a clean, high-contrast layout. It is designed to be the first thing you see when you open your terminal—fast, readable, and out of your way.
 
-Most fetch tools fall into one of two traps:
+---
 
-Too minimal to be useful
+##  Preview
 
-Too decorative to be trustworthy
-
-Fetchx sits in the middle.
-
-It shows only what you actually care about when you open a terminal:
-
-What system am I on?
-
-What am I running?
-
-How long has it been alive?
-
-No plugins. No config files. No noise.
-
-Features
-
-Linux-first (native + WSL)
-
-Zero dependencies (Python standard library only)
-
-Instant execution
-
-Always-on ASCII header
-
-Clean, readable output
-
-One-file design
-
-Example Output
+```text
 ███████╗███████╗████████╗ ██████╗██╗  ██╗██╗  ██╗
 ██╔════╝██╔════╝╚══██╔══╝██╔════╝██║  ██║╚██╗██╔╝
-█████╗  █████╗     ██║   ██║     ███████║ ╚███╔╝
-██╔══╝  ██╔══╝     ██║   ██║     ██╔══██║ ██╔██╗
+█████╗  █████╗     ██║   ██║     ███████║ ╚███╔╝ 
+██╔══╝  ██╔══╝     ██║   ██║     ██╔══██║ ██╔██╗ 
 ██║     ███████╗   ██║   ╚██████╗██║  ██║██╔╝ ██╗
 ╚═╝     ╚══════╝   ╚═╝    ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝
 
 OS:        Linux
-Distro:    Arch Linux
+Distro:    Ubuntu 24.04 LTS
 Kernel:    6.6.x
 Arch:      x86_64
-Host:      acer
-Desktop:   KDE
 CPU:       Ryzen 5 6600H
-Memory:    3.3GB / 7.5GB
-Uptime:    2h 14m
-Shell:     /usr/bin/zsh
-Terminal:  xterm-256color
-User:      mirza
+Memory:    3.2GB / 7.5GB
+Uptime:    13h 20m
+Shell:     zsh
 
-Installation
-Requirements
+```
 
-Linux (or WSL)
+---
 
-Python 3.8+
+## 💡 The fetchx Philosophy
 
-Install
-git clone https://github.com/yourusername/fetchx.git
+Unlike other "fetch" tools that have grown into complex frameworks, `fetchx` follows the Unix philosophy of doing one thing well:
+
+* **Zero Configuration:** No `.conf` files, no themes, no hidden folders.
+* **Zero Dependencies:** Uses only the Python standard library. If you have Python, it works.
+* **Zero Lag:** Optimized for execution in milliseconds to keep your shell responsive.
+* **WSL Friendly:** Designed to detect and display Windows Subsystem for Linux environments correctly.
+
+---
+
+## 📥 Installation
+
+### Quick Install
+
+Install and set permissions with a single command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/v9mirza/fetchx/main/install.sh | bash
+
+```
+
+### Manual Setup
+
+If you prefer a manual installation to your local path:
+
+```bash
+git clone https://github.com/YOUR_USERNAME/fetchx.git
 cd fetchx
-chmod +x fetchx.py
-sudo mv fetchx.py /usr/local/bin/fetchx
+chmod +x fetchx
+mkdir -p ~/.local/bin
+cp fetchx ~/.local/bin/
 
+```
 
-Run:
+---
 
+## 🛠 Usage
+
+Simply run:
+
+```bash
 fetchx
 
-Philosophy
+```
 
-Fetchx follows three rules:
+To see your system info every time you open a terminal, add `fetchx` to your shell configuration:
 
-Essentials only
-If it’s not useful every time, it doesn’t belong.
+```bash
+# Add to .bashrc or .zshrc
+echo "fetchx" >> ~/.zshrc
 
-Truth over polish
-Fetchx reports what the system exposes — no guesses, no cosmetics.
+```
 
-Readable code
-The source should be as clear as the output.
+---
 
-What Fetchx Is Not
+## 🗺 Roadmap
 
-Not a distro showcase
+* [ ] **Side-by-side layout:** Better support for ultra-wide terminal windows.
+* [ ] **Machine-readable:** Add a `--json` flag for integration into custom dashboards.
+* [ ] **Native Packages:** `.deb` and `AUR` support.
 
-Not a theming engine
+---
 
-Not a plugin framework
+## 📄 License
 
-Not a replacement for neofetch
+Distributed under the MIT License. See `LICENSE` for more information.
 
-Fetchx is a system fingerprint, not a banner.
+---
 
-Roadmap (Intentional, Not Promised)
-
-Side-by-side layout (logo + info)
-
-Optional flags (--json, --no-color)
-
-GPU detection (carefully)
-
-Config support (v2)
-
-Only additions that respect the core philosophy will be accepted.
-
-Contributing
-
-Contributions are welcome if they align with the project goals.
-
-Before opening a PR, ask:
-
-“Would this be useful every single time Fetchx runs?”
-
-If the answer isn’t yes, it probably doesn’t belong.
-
-License
-
-MIT License.
-
-Use it. Fork it. Modify it.
-Just don’t turn it into noise.
