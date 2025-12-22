@@ -145,8 +145,7 @@ def terminal():
 
 def init_system():
     try:
-        with open("/proc/1/comm") as f:
-            return f.read().strip()
+        return open("/proc/1/comm").read().strip()
     except:
         return None
 
@@ -219,7 +218,6 @@ def row(label, value):
 # ================= OUTPUT MODES =================
 
 def show_default():
-    print(ASCII_LOGO)
     print(row("OS:", os_name()))
     print(row("Kernel:", platform.release()))
     print(row("Host:", platform.node()))
@@ -241,10 +239,9 @@ def show_default():
     print(row("User:", os.environ.get("USER", "unknown")))
 
 def show_network():
-    print(ASCII_LOGO)
     iface = interface()
-
     print(row("Interface:", iface or "unknown"))
+
     if iface:
         if mac_address(iface):
             print(row("MAC:", mac_address(iface)))
@@ -261,9 +258,11 @@ def show_network():
         print(row("External IP:", external_ip()))
 
 def show_full():
+    # default
     show_default()
     print()
 
+    # extra system
     print(row("Arch:", platform.machine()))
     if init_system():
         print(row("Init:", init_system()))
@@ -278,11 +277,14 @@ def show_full():
         print(row("GPU Driver:" if i == 1 else f"GPU {i} Driver:", gpu))
 
     print()
+    # network inline
     show_network()
 
 # ================= MAIN =================
 
 def main():
+    print(ASCII_LOGO)
+
     if NETWORK:
         show_network()
     elif FULL:
