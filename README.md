@@ -68,7 +68,7 @@ User:      mirza
 ### Quick Install (Recommended)
 
 ```bash
-curl -fsSL [https://raw.githubusercontent.com/v9mirza/fetchx/main/install.sh](https://raw.githubusercontent.com/v9mirza/fetchx/main/install.sh) | bash
+curl -fsSL https://raw.githubusercontent.com/v9mirza/fetchx/main/install.sh | bash
 
 ```
 
