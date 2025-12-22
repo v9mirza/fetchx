@@ -34,9 +34,8 @@ if HELP:
         "fetchx — system snapshot tool\n\n"
         "Usage:\n"
         "  fetchx\n"
-        "  fetchx --full\n"
         "  fetchx --network\n"
-        "  fetchx --full --network\n"
+        "  fetchx --full\n"
         "  fetchx --help\n"
         "  fetchx --version"
     )
@@ -61,10 +60,8 @@ def os_name():
 def uptime():
     try:
         with open("/proc/uptime") as f:
-            seconds = float(f.readline().split()[0])
-        h = int(seconds // 3600)
-        m = int((seconds % 3600) // 60)
-        return f"{h}h {m}m"
+            s = float(f.readline().split()[0])
+        return f"{int(s//3600)}h {int((s%3600)//60)}m"
     except:
         return "unknown"
 
@@ -75,9 +72,8 @@ def memory():
             for line in f:
                 k, v = line.split(":")
                 mem[k] = int(v.strip().split()[0])
+        used = (mem["MemTotal"] - mem["MemAvailable"]) // 1024
         total = mem["MemTotal"] // 1024
-        avail = mem["MemAvailable"] // 1024
-        used = total - avail
         return f"{used}MB / {total}MB"
     except:
         return "unknown"
@@ -109,26 +105,23 @@ def cpu_cores():
 def gpus():
     try:
         out = os.popen("lspci | grep -Ei 'vga|3d|display'").read().strip()
-        if not out:
-            return []
-        return [line.split(": ", 1)[1] for line in out.splitlines()]
+        return [l.split(": ", 1)[1] for l in out.splitlines()] if out else []
     except:
         return []
 
 def gpus_full():
     try:
         out = os.popen("lspci -k | grep -EA3 'vga|3d|display'").read().strip()
-        blocks = out.split("\n\n")
-        gpus = []
-        for b in blocks:
-            lines = b.splitlines()
+        g = []
+        for block in out.split("\n\n"):
+            lines = block.splitlines()
             name = lines[0].split(": ", 1)[1]
             driver = "unknown"
             for l in lines:
                 if "Kernel driver in use" in l:
                     driver = l.split(": ", 1)[1]
-            gpus.append(f"{name} ({driver})")
-        return gpus
+            g.append(f"{name} ({driver})")
+        return g
     except:
         return []
 
@@ -145,11 +138,7 @@ def packages():
     return None
 
 def desktop():
-    return (
-        os.environ.get("XDG_CURRENT_DESKTOP")
-        or os.environ.get("DESKTOP_SESSION")
-        or "tty"
-    )
+    return os.environ.get("XDG_CURRENT_DESKTOP") or os.environ.get("DESKTOP_SESSION") or "tty"
 
 def terminal():
     return os.environ.get("TERM_PROGRAM") or os.environ.get("TERM") or "unknown"
@@ -170,13 +159,9 @@ def session_type():
 
 def wsl():
     try:
-        with open("/proc/version") as f:
-            v = f.read().lower()
-            if "microsoft" in v or "wsl" in v:
-                return "WSL"
+        return "WSL" if "microsoft" in open("/proc/version").read().lower() else None
     except:
-        pass
-    return None
+        return None
 
 # ---------- Network helpers ----------
 
@@ -204,26 +189,21 @@ def gateway():
 
 def mac_address(iface):
     try:
-        with open(f"/sys/class/net/{iface}/address") as f:
-            return f.read().strip()
+        return open(f"/sys/class/net/{iface}/address").read().strip()
     except:
         return None
 
 def link_state(iface):
     try:
-        with open(f"/sys/class/net/{iface}/operstate") as f:
-            return f.read().strip()
+        return open(f"/sys/class/net/{iface}/operstate").read().strip()
     except:
         return None
 
 def dns_servers():
     try:
-        servers = []
-        with open("/etc/resolv.conf") as f:
-            for line in f:
-                if line.startswith("nameserver"):
-                    servers.append(line.split()[1])
-        return ", ".join(servers) if servers else None
+        return ", ".join(
+            l.split()[1] for l in open("/etc/resolv.conf") if l.startswith("nameserver")
+        )
     except:
         return None
 
@@ -233,89 +213,82 @@ def external_ip():
     except:
         return None
 
-def row(label, value, cyan, reset):
-    return f"{cyan}{label:<12}{reset} {value}"
+def row(label, value):
+    return f"\033[36m{label:<12}\033[0m {value}"
+
+# ================= OUTPUT MODES =================
+
+def show_default():
+    print(ASCII_LOGO)
+    print(row("OS:", os_name()))
+    print(row("Kernel:", platform.release()))
+    print(row("Host:", platform.node()))
+
+    pkgs = packages()
+    if pkgs:
+        print(row("Packages:", pkgs))
+
+    print(row("Desktop:", desktop()))
+    print(row("CPU:", cpu()))
+
+    for i, gpu in enumerate(gpus(), 1):
+        print(row("GPU:" if i == 1 else f"GPU {i}:", gpu))
+
+    print(row("Memory:", memory()))
+    print(row("Uptime:", uptime()))
+    print(row("Shell:", os.environ.get("SHELL", "unknown")))
+    print(row("Terminal:", terminal()))
+    print(row("User:", os.environ.get("USER", "unknown")))
+
+def show_network():
+    print(ASCII_LOGO)
+    iface = interface()
+
+    print(row("Interface:", iface or "unknown"))
+    if iface:
+        if mac_address(iface):
+            print(row("MAC:", mac_address(iface)))
+        if link_state(iface):
+            print(row("Link:", link_state(iface)))
+
+    if local_ip():
+        print(row("Local IP:", local_ip()))
+    if gateway():
+        print(row("Gateway:", gateway()))
+    if dns_servers():
+        print(row("DNS:", dns_servers()))
+    if external_ip():
+        print(row("External IP:", external_ip()))
+
+def show_full():
+    show_default()
+    print()
+
+    print(row("Arch:", platform.machine()))
+    if init_system():
+        print(row("Init:", init_system()))
+    if cpu_cores():
+        print(row("CPU Cores:", cpu_cores()))
+    if session_type():
+        print(row("Session:", session_type()))
+    if wsl():
+        print(row("Environment:", wsl()))
+
+    for i, gpu in enumerate(gpus_full(), 1):
+        print(row("GPU Driver:" if i == 1 else f"GPU {i} Driver:", gpu))
+
+    print()
+    show_network()
 
 # ================= MAIN =================
 
 def main():
-    cyan = "\033[36m"
-    reset = "\033[0m"
-
-    print(f"{cyan}{ASCII_LOGO}{reset}")
-
-    # ----- DEFAULT OUTPUT -----
-    print(row("OS:", os_name(), cyan, reset))
-    print(row("Kernel:", platform.release(), cyan, reset))
-    print(row("Host:", platform.node(), cyan, reset))
-
-    pkgs = packages()
-    if pkgs:
-        print(row("Packages:", pkgs, cyan, reset))
-
-    print(row("Desktop:", desktop(), cyan, reset))
-    print(row("CPU:", cpu(), cyan, reset))
-
-    for i, gpu in enumerate(gpus(), 1):
-        label = "GPU:" if i == 1 else f"GPU {i}:"
-        print(row(label, gpu, cyan, reset))
-
-    print(row("Memory:", memory(), cyan, reset))
-    print(row("Uptime:", uptime(), cyan, reset))
-    print(row("Shell:", os.environ.get("SHELL", "unknown"), cyan, reset))
-    print(row("Terminal:", terminal(), cyan, reset))
-    print(row("User:", os.environ.get("USER", "unknown"), cyan, reset))
-
-    # ----- FULL OUTPUT (superset) -----
-    if FULL:
-        print()
-        print(row("Arch:", platform.machine(), cyan, reset))
-
-        if init_system():
-            print(row("Init:", init_system(), cyan, reset))
-        if cpu_cores():
-            print(row("CPU Cores:", cpu_cores(), cyan, reset))
-        if session_type():
-            print(row("Session:", session_type(), cyan, reset))
-        if wsl():
-            print(row("Environment:", wsl(), cyan, reset))
-
-        for i, gpu in enumerate(gpus_full(), 1):
-            label = "GPU Driver:" if i == 1 else f"GPU {i} Driver:"
-            print(row(label, gpu, cyan, reset))
-
-    # ----- NETWORK OUTPUT -----
     if NETWORK:
-        print()
-        print(row("Network:", "", cyan, reset))
-
-        iface = interface()
-        if iface:
-            print(row("Interface:", iface, cyan, reset))
-
-            mac = mac_address(iface)
-            if mac:
-                print(row("MAC:", mac, cyan, reset))
-
-            state = link_state(iface)
-            if state:
-                print(row("Link:", state, cyan, reset))
-
-        ip = local_ip()
-        if ip:
-            print(row("Local IP:", ip, cyan, reset))
-
-        gw = gateway()
-        if gw:
-            print(row("Gateway:", gw, cyan, reset))
-
-        dns = dns_servers()
-        if dns:
-            print(row("DNS:", dns, cyan, reset))
-
-        ext = external_ip()
-        if ext:
-            print(row("External IP:", ext, cyan, reset))
+        show_network()
+    elif FULL:
+        show_full()
+    else:
+        show_default()
 
 if __name__ == "__main__":
     main()
