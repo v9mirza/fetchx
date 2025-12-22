@@ -1,114 +1,294 @@
-# 🚀 fetchx
+#!/usr/bin/env python3
 
-**A minimal, dependency-free system information tool for Linux.**
+import os
+import sys
+import platform
+import shutil
+import socket
 
-`fetchx` provides essential system details in a clean, high-contrast layout.  
-It is designed to be fast, readable, and out of your way.
+# ================= FLAGS =================
 
----
+ARGS = sys.argv[1:]
+FULL = "--full" in ARGS
+NETWORK = "--network" in ARGS
+HELP = "--help" in ARGS or "-h" in ARGS
+VERSION_FLAG = "--version" in ARGS
 
-## 🖼️ Preview
+VERSION = "0.1.0"
 
-```text
-███████╗███████╗████████╗ ██████╗██╗  ██╗██╗  ██╗
-██╔════╝██╔════╝╚══██╔══╝██╔════╝██║  ██║╚██╗██╔╝
-█████╗  █████╗     ██║   ██║     ███████║ ╚███╔╝
-██╔══╝  ██╔══╝     ██║   ██║     ██╔══██║ ██╔██╗
-██║     ███████╗   ██║   ╚██████╗██║  ██║██╔╝ ██╗
-╚═╝     ╚══════╝   ╚═╝    ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝
+# ================= ASCII LOGO =================
 
-OS:        Linux
-Distro:    Ubuntu 24.04 LTS
-Kernel:    6.6.x
-Arch:      x86_64
-CPU:       Ryzen 5 6600H
-Memory:    3.2GB / 7.5GB
-Uptime:    13h 20m
-Shell:     zsh
-````
+ASCII_LOGO = r"""
+   ███████╗███████╗████████╗ ██████╗██╗  ██╗██╗  ██╗
+   ██╔════╝██╔════╝╚══██╔══╝██╔════╝██║  ██║╚██╗██╔╝
+   █████╗  █████╗     ██║   ██║     ███████║ ╚███╔╝
+   ██╔══╝  ██╔══╝     ██║   ██║     ██╔══██║ ██╔██╗
+   ██║     ███████╗   ██║   ╚██████╗██║  ██║██╔╝ ██╗
+   ╚═╝     ╚══════╝   ╚═╝    ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝
+"""
 
----
+# ================= HELP / VERSION =================
 
-## 💡 The fetchx Philosophy
+if HELP:
+    print(
+        "fetchx — system snapshot tool\n\n"
+        "Usage:\n"
+        "  fetchx\n"
+        "  fetchx --network\n"
+        "  fetchx --full\n"
+        "  fetchx --help\n"
+        "  fetchx --version"
+    )
+    sys.exit(0)
 
-Unlike other “fetch” tools that have grown into complex frameworks, `fetchx`
-follows the Unix philosophy of doing one thing well:
+if VERSION_FLAG:
+    print(f"fetchx {VERSION}")
+    sys.exit(0)
 
-* **Zero Configuration** — No `.conf` files, no themes, no hidden folders.
-* **Zero Dependencies** — Uses only the Python standard library (Python 3 required).
-* **Zero Lag** — Optimized for execution in milliseconds.
-* **WSL Friendly** — Correctly detects Windows Subsystem for Linux environments.
+# ================= HELPERS =================
 
----
+def os_name():
+    try:
+        with open("/etc/os-release") as f:
+            for line in f:
+                if line.startswith("PRETTY_NAME"):
+                    return line.split("=", 1)[1].strip().strip('"')
+    except:
+        pass
+    return platform.system()
 
-## 📥 Installation
+def uptime():
+    try:
+        with open("/proc/uptime") as f:
+            s = float(f.readline().split()[0])
+        return f"{int(s//3600)}h {int((s%3600)//60)}m"
+    except:
+        return "unknown"
 
-### Requirements
+def memory():
+    try:
+        mem = {}
+        with open("/proc/meminfo") as f:
+            for line in f:
+                k, v = line.split(":")
+                mem[k] = int(v.strip().split()[0])
+        used = (mem["MemTotal"] - mem["MemAvailable"]) // 1024
+        total = mem["MemTotal"] // 1024
+        return f"{used}MB / {total}MB"
+    except:
+        return "unknown"
 
-* Linux (or WSL)
-* Python 3.8+
+def cpu():
+    try:
+        with open("/proc/cpuinfo") as f:
+            for line in f:
+                if "model name" in line:
+                    return line.split(":", 1)[1].strip()
+    except:
+        pass
+    return "unknown"
 
-### Quick Install
+def cpu_cores():
+    try:
+        cores = set()
+        threads = 0
+        with open("/proc/cpuinfo") as f:
+            for line in f:
+                if line.startswith("core id"):
+                    cores.add(line.strip())
+                if line.startswith("processor"):
+                    threads += 1
+        return f"{len(cores)} cores / {threads} threads"
+    except:
+        return None
 
-Install system-wide with a single command:
+def gpus():
+    try:
+        out = os.popen("lspci | grep -Ei 'vga|3d|display'").read().strip()
+        return [l.split(": ", 1)[1] for l in out.splitlines()] if out else []
+    except:
+        return []
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/v9mirza/fetchx/main/install.sh | bash
-```
+def gpus_full():
+    try:
+        out = os.popen("lspci -k | grep -EA3 'vga|3d|display'").read().strip()
+        g = []
+        for block in out.split("\n\n"):
+            lines = block.splitlines()
+            name = lines[0].split(": ", 1)[1]
+            driver = "unknown"
+            for l in lines:
+                if "Kernel driver in use" in l:
+                    driver = l.split(": ", 1)[1]
+            g.append(f"{name} ({driver})")
+        return g
+    except:
+        return []
 
----
+def packages():
+    try:
+        if shutil.which("pacman"):
+            return os.popen("pacman -Qq | wc -l").read().strip()
+        if shutil.which("dpkg"):
+            return os.popen("dpkg -l | grep '^ii' | wc -l").read().strip()
+        if shutil.which("rpm"):
+            return os.popen("rpm -qa | wc -l").read().strip()
+    except:
+        pass
+    return None
 
-### Manual Setup
+def desktop():
+    return os.environ.get("XDG_CURRENT_DESKTOP") or os.environ.get("DESKTOP_SESSION") or "tty"
 
-If you prefer a manual installation to your local path:
+def terminal():
+    return os.environ.get("TERM_PROGRAM") or os.environ.get("TERM") or "unknown"
 
-```bash
-git clone https://github.com/v9mirza/fetchx.git
-cd fetchx
-chmod +x fetchx
-mkdir -p ~/.local/bin
-cp fetchx ~/.local/bin/
-```
+def init_system():
+    try:
+        with open("/proc/1/comm") as f:
+            return f.read().strip()
+    except:
+        return None
 
-Make sure `~/.local/bin` is in your `PATH`.
+def session_type():
+    if os.environ.get("WAYLAND_DISPLAY"):
+        return "Wayland"
+    if os.environ.get("DISPLAY"):
+        return "X11"
+    return None
 
----
+def wsl():
+    try:
+        return "WSL" if "microsoft" in open("/proc/version").read().lower() else None
+    except:
+        return None
 
-## 🛠 Usage
+# ---------- Network helpers ----------
 
-Run:
+def interface():
+    try:
+        return os.popen("ip route | awk '/default/ {print $5}'").read().strip()
+    except:
+        return None
 
-```bash
-fetchx
-```
+def local_ip():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except:
+        return None
 
-### Optional: Run on Terminal Startup (Safe)
+def gateway():
+    try:
+        return os.popen("ip route | awk '/default/ {print $3}'").read().strip()
+    except:
+        return None
 
-If you want `fetchx` to run when you open a terminal, add this **at the end**
-of your shell config file:
+def mac_address(iface):
+    try:
+        return open(f"/sys/class/net/{iface}/address").read().strip()
+    except:
+        return None
 
-```bash
-# ~/.bashrc or ~/.zshrc
-if [[ $SHLVL -eq 1 ]] && command -v fetchx >/dev/null; then
-  fetchx
-fi
-```
+def link_state(iface):
+    try:
+        return open(f"/sys/class/net/{iface}/operstate").read().strip()
+    except:
+        return None
 
-This avoids startup warnings and runs only once per terminal session.
+def dns_servers():
+    try:
+        return ", ".join(
+            l.split()[1] for l in open("/etc/resolv.conf") if l.startswith("nameserver")
+        )
+    except:
+        return None
 
----
+def external_ip():
+    try:
+        return os.popen("curl -fsSL https://api.ipify.org").read().strip()
+    except:
+        return None
 
-## 🗺 Roadmap
+def row(label, value):
+    return f"\033[36m{label:<12}\033[0m {value}"
 
-* [ ] Side-by-side layout for wide terminals
-* [ ] Machine-readable output (`--json`)
-* [ ] Native packages (`.deb`, AUR)
+# ================= OUTPUT MODES =================
 
----
+def show_default():
+    print(ASCII_LOGO)
+    print(row("OS:", os_name()))
+    print(row("Kernel:", platform.release()))
+    print(row("Host:", platform.node()))
 
-## 📄 License
+    pkgs = packages()
+    if pkgs:
+        print(row("Packages:", pkgs))
 
-Distributed under the MIT License.
-See the `LICENSE` file for details.
+    print(row("Desktop:", desktop()))
+    print(row("CPU:", cpu()))
 
-```
+    for i, gpu in enumerate(gpus(), 1):
+        print(row("GPU:" if i == 1 else f"GPU {i}:", gpu))
+
+    print(row("Memory:", memory()))
+    print(row("Uptime:", uptime()))
+    print(row("Shell:", os.environ.get("SHELL", "unknown")))
+    print(row("Terminal:", terminal()))
+    print(row("User:", os.environ.get("USER", "unknown")))
+
+def show_network():
+    print(ASCII_LOGO)
+    iface = interface()
+
+    print(row("Interface:", iface or "unknown"))
+    if iface:
+        if mac_address(iface):
+            print(row("MAC:", mac_address(iface)))
+        if link_state(iface):
+            print(row("Link:", link_state(iface)))
+
+    if local_ip():
+        print(row("Local IP:", local_ip()))
+    if gateway():
+        print(row("Gateway:", gateway()))
+    if dns_servers():
+        print(row("DNS:", dns_servers()))
+    if external_ip():
+        print(row("External IP:", external_ip()))
+
+def show_full():
+    show_default()
+    print()
+
+    print(row("Arch:", platform.machine()))
+    if init_system():
+        print(row("Init:", init_system()))
+    if cpu_cores():
+        print(row("CPU Cores:", cpu_cores()))
+    if session_type():
+        print(row("Session:", session_type()))
+    if wsl():
+        print(row("Environment:", wsl()))
+
+    for i, gpu in enumerate(gpus_full(), 1):
+        print(row("GPU Driver:" if i == 1 else f"GPU {i} Driver:", gpu))
+
+    print()
+    show_network()
+
+# ================= MAIN =================
+
+def main():
+    if NETWORK:
+        show_network()
+    elif FULL:
+        show_full()
+    else:
+        show_default()
+
+if __name__ == "__main__":
+    main()
