@@ -1,5 +1,16 @@
 #!/usr/bin/env bash
 set -e
+if ! command -v python3 >/dev/null; then
+  echo "Error: python3 is required but not installed."
+  echo
+  echo "Install Python 3 using your package manager:"
+  echo "  Debian/Ubuntu : sudo apt install python3"
+  echo "  Fedora/RHEL   : sudo dnf install python3"
+  echo "  Arch Linux    : sudo pacman -S python"
+  exit 1
+fi
+
+
 
 REPO="v9mirza/fetchx"
 RAW_BASE="https://raw.githubusercontent.com/$REPO/main"
