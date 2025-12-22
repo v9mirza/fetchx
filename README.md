@@ -1,20 +1,19 @@
----
-
 # 🚀 fetchx
 
 **A minimal, dependency-free system information tool for Linux.**
 
-`fetchx` provides essential system details in a clean, high-contrast layout. It is designed to be the first thing you see when you open your terminal—fast, readable, and out of your way.
+`fetchx` provides essential system details in a clean, high-contrast layout.  
+It is designed to be fast, readable, and out of your way.
 
 ---
 
-##  Preview
+## 🖼️ Preview
 
 ```text
 ███████╗███████╗████████╗ ██████╗██╗  ██╗██╗  ██╗
 ██╔════╝██╔════╝╚══██╔══╝██╔════╝██║  ██║╚██╗██╔╝
-█████╗  █████╗     ██║   ██║     ███████║ ╚███╔╝ 
-██╔══╝  ██╔══╝     ██║   ██║     ██╔══██║ ██╔██╗ 
+█████╗  █████╗     ██║   ██║     ███████║ ╚███╔╝
+██╔══╝  ██╔══╝     ██║   ██║     ██╔══██║ ██╔██╗
 ██║     ███████╗   ██║   ╚██████╗██║  ██║██╔╝ ██╗
 ╚═╝     ╚══════╝   ╚═╝    ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝
 
@@ -26,78 +25,90 @@ CPU:       Ryzen 5 6600H
 Memory:    3.2GB / 7.5GB
 Uptime:    13h 20m
 Shell:     zsh
-
-```
+````
 
 ---
 
 ## 💡 The fetchx Philosophy
 
-Unlike other "fetch" tools that have grown into complex frameworks, `fetchx` follows the Unix philosophy of doing one thing well:
+Unlike other “fetch” tools that have grown into complex frameworks, `fetchx`
+follows the Unix philosophy of doing one thing well:
 
-* **Zero Configuration:** No `.conf` files, no themes, no hidden folders.
-* **Zero Dependencies:** Uses only the Python standard library. If you have Python, it works.
-* **Zero Lag:** Optimized for execution in milliseconds to keep your shell responsive.
-* **WSL Friendly:** Designed to detect and display Windows Subsystem for Linux environments correctly.
+* **Zero Configuration** — No `.conf` files, no themes, no hidden folders.
+* **Zero Dependencies** — Uses only the Python standard library (Python 3 required).
+* **Zero Lag** — Optimized for execution in milliseconds.
+* **WSL Friendly** — Correctly detects Windows Subsystem for Linux environments.
 
 ---
 
 ## 📥 Installation
 
+### Requirements
+
+* Linux (or WSL)
+* Python 3.8+
+
 ### Quick Install
 
-Install and set permissions with a single command:
+Install system-wide with a single command:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/v9mirza/fetchx/main/install.sh | bash
-
 ```
+
+---
 
 ### Manual Setup
 
 If you prefer a manual installation to your local path:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/fetchx.git
+git clone https://github.com/v9mirza/fetchx.git
 cd fetchx
 chmod +x fetchx
 mkdir -p ~/.local/bin
 cp fetchx ~/.local/bin/
-
 ```
+
+Make sure `~/.local/bin` is in your `PATH`.
 
 ---
 
 ## 🛠 Usage
 
-Simply run:
+Run:
 
 ```bash
 fetchx
-
 ```
 
-To see your system info every time you open a terminal, add `fetchx` to your shell configuration:
+### Optional: Run on Terminal Startup (Safe)
+
+If you want `fetchx` to run when you open a terminal, add this **at the end**
+of your shell config file:
 
 ```bash
-# Add to .bashrc or .zshrc
-echo "fetchx" >> ~/.zshrc
-
+# ~/.bashrc or ~/.zshrc
+if [[ $SHLVL -eq 1 ]] && command -v fetchx >/dev/null; then
+  fetchx
+fi
 ```
+
+This avoids startup warnings and runs only once per terminal session.
 
 ---
 
 ## 🗺 Roadmap
 
-* [ ] **Side-by-side layout:** Better support for ultra-wide terminal windows.
-* [ ] **Machine-readable:** Add a `--json` flag for integration into custom dashboards.
-* [ ] **Native Packages:** `.deb` and `AUR` support.
+* [ ] Side-by-side layout for wide terminals
+* [ ] Machine-readable output (`--json`)
+* [ ] Native packages (`.deb`, AUR)
 
 ---
 
 ## 📄 License
 
-Distributed under the MIT License. See `LICENSE` for more information.
+Distributed under the MIT License.
+See the `LICENSE` file for details.
 
----
-
+```
