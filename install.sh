@@ -8,20 +8,17 @@ INSTALL_PATH="/usr/local/bin/$BIN_NAME"
 
 echo "Installing fetchx..."
 
-# Download fetchx
 tmp_dir="$(mktemp -d)"
-curl -fsSL "$RAW_BASE/fetchx" -o "$tmp_dir/$BIN_NAME"
 
-# Verify download
+curl -fsSL "$RAW_BASE/$BIN_NAME" -o "$tmp_dir/$BIN_NAME"
+
 if [ ! -s "$tmp_dir/$BIN_NAME" ]; then
   echo "Error: failed to download fetchx"
   exit 1
 fi
 
-# Install
 sudo install -m 755 "$tmp_dir/$BIN_NAME" "$INSTALL_PATH"
 
-# Cleanup
 rm -rf "$tmp_dir"
 
 echo "fetchx installed successfully."
