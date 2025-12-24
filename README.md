@@ -1,5 +1,5 @@
 
-# 🚀 fetchx
+# 🚀 FetchX
 
 **A minimal, dependency-free system information tool for Linux.**
 
