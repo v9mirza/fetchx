@@ -75,7 +75,7 @@ curl -fsSL https://raw.githubusercontent.com/v9mirza/fetchx/main/install.sh | ba
 ### Manual Setup
 
 ```bash
-git clone [https://github.com/v9mirza/fetchx.git](https://github.com/v9mirza/fetchx.git)
+git clone https://github.com/v9mirza/fetchx.git
 cd fetchx
 chmod +x fetchx
 mkdir -p ~/.local/bin
