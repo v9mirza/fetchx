@@ -25,17 +25,20 @@ It shows a clean, high-contrast snapshot of your system the moment your terminal
 ██║     ███████╗   ██║   ╚██████╗██║  ██║██╔╝ ██╗
 ╚═╝     ╚══════╝   ╚═╝    ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝
 
-OS:        Ubuntu 24.04.3 LTS
-Kernel:    6.6.x
+
+OS:        Arch Linux x86_64
+Kernel:    6.12.10-arch1-1
 Host:      acer
-Packages:  693
-Desktop:   tty
-CPU:       AMD Ryzen 5 6600H
-GPU:       Microsoft Basic Render Driver
-Memory:    2.3GB / 7.5GB
-Uptime:    16h 50m
-Shell:     /bin/bash
-Terminal:  xterm-256color
+Packages:  1243 (pacman)
+Desktop:   Hyprland
+CPU:       AMD Ryzen 9 7950X
+GPU:       NVIDIA GeForce RTX 4090
+Memory:    4.2GB / 32.0GB
+Disk:      205GB / 2.0TB (10%)
+Battery:   100% (Full)
+Uptime:    2d 4h 12m
+Shell:     /bin/zsh
+Terminal:  kitty
 User:      mirza
 
 ```
@@ -49,6 +52,8 @@ User:      mirza
 | `fetchx` | **Default**: Displays essential system snapshot. |
 | `fetchx --full` | **Full Mode**: Extended details (Arch, Init, etc.). |
 | `fetchx --network` | **Network Mode**: IP, MAC, Gateway, and DNS details. |
+| `fetchx --compact` | **Compact Mode**: Single-line output for status bars. |
+| `fetchx --json` | **JSON Output**: Machine-readable format for scripts. |
 | `fetchx --help` | **Help**: Displays all available flags and usage. |
 | `fetchx --version` | **Version**: Shows current installed version. |
 
@@ -102,13 +107,15 @@ fi
 
 ## 🗺️ Roadmap
 
+* [x] JSON Output (`--json`) for scripting and dashboards.
+* [x] Hardware Metrics (Disk Usage, Battery).
+* [x] Performance Optimization (Fast package counting).
+* [x] Compact Mode (`--compact`).
 * [ ] Side-by-side layout for ultra-wide terminals.
-* [ ] JSON Output (`--json`) for scripting and dashboards.
 * [ ] Native Packages via `.deb` and AUR.
 
 ---
 
 **Released under the MIT License.**
-
 ```
 

@@ -5,12 +5,16 @@ import sys
 import platform
 import shutil
 import socket
+import subprocess
+import json
 
 # ================= FLAGS =================
 
 ARGS = sys.argv[1:]
 FULL = "--full" in ARGS
 NETWORK = "--network" in ARGS
+JSON_OUTPUT = "--json" in ARGS
+COMPACT = "--compact" in ARGS
 HELP = "--help" in ARGS or "-h" in ARGS
 VERSION_FLAG = "--version" in ARGS
 
@@ -36,6 +40,8 @@ if HELP:
         "  fetchx\n"
         "  fetchx --network\n"
         "  fetchx --full\n"
+        "  fetchx --json\n"
+        "  fetchx --compact\n"
         "  fetchx --help\n"
         "  fetchx --version"
     )
@@ -53,7 +59,7 @@ def os_name():
             for line in f:
                 if line.startswith("PRETTY_NAME"):
                     return line.split("=", 1)[1].strip().strip('"')
-    except:
+    except Exception:
         pass
     return platform.system()
 
@@ -62,7 +68,7 @@ def uptime():
         with open("/proc/uptime") as f:
             s = float(f.readline().split()[0])
         return f"{int(s//3600)}h {int((s%3600)//60)}m"
-    except:
+    except Exception:
         return "unknown"
 
 def memory():
@@ -75,7 +81,7 @@ def memory():
         used = (mem["MemTotal"] - mem["MemAvailable"]) // 1024
         total = mem["MemTotal"] // 1024
         return f"{used}MB / {total}MB"
-    except:
+    except Exception:
         return "unknown"
 
 def cpu():
@@ -84,7 +90,7 @@ def cpu():
             for line in f:
                 if "model name" in line:
                     return line.split(":", 1)[1].strip()
-    except:
+    except Exception:
         pass
     return "unknown"
 
@@ -99,22 +105,25 @@ def cpu_cores():
                 if line.startswith("processor"):
                     threads += 1
         return f"{len(cores)} cores / {threads} threads"
-    except:
+    except Exception:
         return None
 
 def gpus():
     try:
-        out = os.popen("lspci | grep -Ei 'vga|3d|display'").read().strip()
+        p = subprocess.run("lspci | grep -Ei 'vga|3d|display'", shell=True, capture_output=True, text=True)
+        out = p.stdout.strip()
         return [l.split(": ", 1)[1] for l in out.splitlines()] if out else []
-    except:
+    except Exception:
         return []
 
 def gpus_full():
     try:
-        out = os.popen("lspci -k | grep -EA3 'vga|3d|display'").read().strip()
+        p = subprocess.run("lspci -k | grep -EA3 'vga|3d|display'", shell=True, capture_output=True, text=True)
+        out = p.stdout.strip()
         g = []
         for block in out.split("\n\n"):
             lines = block.splitlines()
+            if not lines: continue
             name = lines[0].split(": ", 1)[1]
             driver = "unknown"
             for l in lines:
@@ -122,18 +131,25 @@ def gpus_full():
                     driver = l.split(": ", 1)[1]
             g.append(f"{name} ({driver})")
         return g
-    except:
+    except Exception:
         return []
 
 def packages():
     try:
-        if shutil.which("pacman"):
-            return os.popen("pacman -Qq | wc -l").read().strip()
-        if shutil.which("dpkg"):
-            return os.popen("dpkg -l | grep '^ii' | wc -l").read().strip()
+        # Fast path: Arch Linux
+        if os.path.exists("/var/lib/pacman/local"):
+             return str(len(os.listdir("/var/lib/pacman/local")) - 1) # -1 for ALPM_DB_VERSION
+
+        # Fast path: Debian/Ubuntu
+        if os.path.exists("/var/lib/dpkg/status"):
+             with open("/var/lib/dpkg/status", "rb") as f:
+                 # Count occurrences of "Status: install ok installed"
+                 return str(f.read().count(b"Status: install ok installed"))
+        
+        # Fallback to slower commands if paths don't exist
         if shutil.which("rpm"):
-            return os.popen("rpm -qa | wc -l").read().strip()
-    except:
+            return subprocess.check_output("rpm -qa | wc -l", shell=True, text=True).strip()
+    except Exception:
         pass
     return None
 
@@ -146,7 +162,7 @@ def terminal():
 def init_system():
     try:
         return open("/proc/1/comm").read().strip()
-    except:
+    except Exception:
         return None
 
 def session_type():
@@ -159,15 +175,15 @@ def session_type():
 def wsl():
     try:
         return "WSL" if "microsoft" in open("/proc/version").read().lower() else None
-    except:
+    except Exception:
         return None
 
 # ---------- Network helpers ----------
 
 def interface():
     try:
-        return os.popen("ip route | awk '/default/ {print $5}'").read().strip()
-    except:
+        return subprocess.check_output("ip route | awk '/default/ {print $5}'", shell=True, text=True).strip()
+    except Exception:
         return None
 
 def local_ip():
@@ -177,25 +193,25 @@ def local_ip():
         ip = s.getsockname()[0]
         s.close()
         return ip
-    except:
+    except Exception:
         return None
 
 def gateway():
     try:
-        return os.popen("ip route | awk '/default/ {print $3}'").read().strip()
-    except:
+        return subprocess.check_output("ip route | awk '/default/ {print $3}'", shell=True, text=True).strip()
+    except Exception:
         return None
 
 def mac_address(iface):
     try:
         return open(f"/sys/class/net/{iface}/address").read().strip()
-    except:
+    except Exception:
         return None
 
 def link_state(iface):
     try:
         return open(f"/sys/class/net/{iface}/operstate").read().strip()
-    except:
+    except Exception:
         return None
 
 def dns_servers():
@@ -203,17 +219,44 @@ def dns_servers():
         return ", ".join(
             l.split()[1] for l in open("/etc/resolv.conf") if l.startswith("nameserver")
         )
-    except:
+    except Exception:
         return None
 
 def external_ip():
     try:
-        return os.popen("curl -fsSL https://api.ipify.org").read().strip()
-    except:
+        return subprocess.run(["curl", "-fsSL", "https://api.ipify.org"], capture_output=True, text=True).stdout.strip()
+    except Exception:
         return None
 
 def row(label, value):
     return f"\033[36m{label:<12}\033[0m {value}"
+
+def disk_usage():
+    try:
+        du = shutil.disk_usage("/")
+        used_gb = du.used // (1024**3)
+        total_gb = du.total // (1024**3)
+        percent = int((du.used / du.total) * 100)
+        return f"{used_gb}GB / {total_gb}GB ({percent}%)"
+    except Exception:
+        return None
+
+def battery():
+    try:
+        # Simple check for /sys/class/power_supply/BAT*
+        bat_path = "/sys/class/power_supply"
+        for d in os.listdir(bat_path):
+            if d.startswith("BAT"):
+                cap_file = os.path.join(bat_path, d, "capacity")
+                stat_file = os.path.join(bat_path, d, "status")
+                with open(cap_file) as f:
+                    cap = int(f.read().strip())
+                with open(stat_file) as f:
+                    stat = f.read().strip()
+                return f"{cap}% ({stat})"
+    except Exception:
+        pass
+    return None
 
 # ================= OUTPUT MODES =================
 
@@ -233,10 +276,49 @@ def show_default():
         print(row("GPU:" if i == 1 else f"GPU {i}:", gpu))
 
     print(row("Memory:", memory()))
+    
+    dsk = disk_usage()
+    if dsk:
+        print(row("Disk:", dsk))
+        
+    bat = battery()
+    if bat:
+        print(row("Battery:", bat))
+
     print(row("Uptime:", uptime()))
     print(row("Shell:", os.environ.get("SHELL", "unknown")))
     print(row("Terminal:", terminal()))
     print(row("User:", os.environ.get("USER", "unknown")))
+
+def show_json():
+    data = {
+        "os": os_name(),
+        "kernel": platform.release(),
+        "host": platform.node(),
+        "packages": packages(),
+        "desktop": desktop(),
+        "cpu": cpu(),
+        "gpus": gpus(),
+        "memory": memory(),
+        "disk": disk_usage(),
+        "battery": battery(),
+        "uptime": uptime(),
+        "shell": os.environ.get("SHELL"),
+        "terminal": terminal(),
+        "user": os.environ.get("USER"),
+    }
+    
+    
+    if NETWORK:
+        data["network"] = {
+            "interface": interface(),
+            "local_ip": local_ip(),
+            "gateway": gateway(),
+            "dns": dns_servers(),
+            "external_ip": external_ip(),
+        }
+         
+    print(json.dumps(data, indent=2))
 
 def show_network():
     iface = interface()
@@ -258,11 +340,9 @@ def show_network():
         print(row("External IP:", external_ip()))
 
 def show_full():
-    # default
     show_default()
     print()
 
-    # extra system
     print(row("Arch:", platform.machine()))
     if init_system():
         print(row("Init:", init_system()))
@@ -277,18 +357,45 @@ def show_full():
         print(row("GPU Driver:" if i == 1 else f"GPU {i} Driver:", gpu))
 
     print()
-    # network inline
     show_network()
+
+def show_compact():
+    """
+    Compact mode: user@host | OS | Kernel | Uptime | Mem: Used/Total
+    """
+    user = os.environ.get("USER", "unknown")
+    host = platform.node()
+    os_ = os_name()
+    kern = platform.release()
+    up = uptime().replace("h ", "h ").replace("m", "m")
+    
+    mem = memory().replace("MB", "")
+    
+    parts = [
+        f"\033[36m{user}@{host}\033[0m",
+        os_,
+        f"Kernel {kern}",
+        f"Up {up}",
+        f"Mem {mem}MB"
+    ]
+    
+    print(" | ".join(parts))
 
 # ================= MAIN =================
 
 def main():
     CYAN = "\033[36m"
     RESET = "\033[0m"
-    print(f"{CYAN}{ASCII_LOGO}{RESET}")
+    if not JSON_OUTPUT and not COMPACT:
+        print(f"{CYAN}{ASCII_LOGO}{RESET}")
 
 
-    if NETWORK:
+
+    if JSON_OUTPUT:
+        show_json()
+    elif COMPACT:
+        show_compact()
+    elif NETWORK:
         show_network()
     elif FULL:
         show_full()
